@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   windows:
+    # After macos, which creates the GitHub release; vpk then merges its files into it.
+    needs: macos
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,10 +31,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Set VPK_SIGN_PARAMS (and install the certificate on the runner) to sign the build.
           VPK_SIGN_PARAMS: ${{ secrets.VPK_SIGN_PARAMS }}
-        run: ./build.ps1 -Version "${{ github.ref_name }}".TrimStart("v") -Upload
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart("v")
+          ./build.ps1 -Version $version -Upload
 
   macos:
     runs-on: ubuntu-latest
+    env:
+      # Job-level so the formula step's `if` can see it; step-level env is not visible there.
+      TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -58,8 +65,6 @@ jobs:
             checksums.txt
       - name: Update the Homebrew formula
         if: ${{ env.TAP_GITHUB_TOKEN != '' }}
-        env:
-          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
         run: |
           version="${GITHUB_REF_NAME#v}"
           url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
