@@ -1,0 +1,73 @@
+# Tag a commit `vX.Y.Z` to release both trackers:
+#   - Windows: Velopack builds PokerlandTracker-win-Setup.exe and the update
+#     packages and attaches them to the GitHub release; installed trackers
+#     update themselves from there.
+#   - macOS: Homebrew builds from the source tarball of the tag. The job
+#     updates the formula in the tap repo (jwc20/homebrew-tap) when a
+#     TAP_GITHUB_TOKEN secret with push access to it exists.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet tool install -g vpk
+      - name: Build and upload the installer
+        working-directory: windows
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Set VPK_SIGN_PARAMS (and install the certificate on the runner) to sign the build.
+          VPK_SIGN_PARAMS: ${{ secrets.VPK_SIGN_PARAMS }}
+        run: ./build.ps1 -Version "${{ github.ref_name }}".TrimStart("v") -Upload
+
+  macos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mac/go.mod
+      - run: go test ./...
+        working-directory: mac
+      - name: Build binaries
+        working-directory: mac
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for arch in arm64 amd64; do
+            GOOS=darwin GOARCH=$arch CGO_ENABLED=0 go build -trimpath \
+              -ldflags "-s -w -X main.version=$version" -o "pokerland-tracker" ./cmd/pokerland-tracker
+            tar -czf "../pokerland-tracker_${version}_darwin_${arch}.tar.gz" pokerland-tracker
+            rm pokerland-tracker
+          done
+          cd .. && sha256sum pokerland-tracker_*.tar.gz > checksums.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pokerland-tracker_*.tar.gz
+            checksums.txt
+      - name: Update the Homebrew formula
+        if: ${{ env.TAP_GITHUB_TOKEN != '' }}
+        env:
+          TAP_GITHUB_TOKEN: ${{ secrets.TAP_GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${GITHUB_REF_NAME}.tar.gz"
+          sha=$(curl -sL "$url" | sha256sum | cut -d' ' -f1)
+          sed -e "s|{{VERSION}}|$version|g" -e "s|{{SHA256}}|$sha|g" homebrew/pokerland-tracker.rb > /tmp/pokerland-tracker.rb
+          git clone "https://x-access-token:${TAP_GITHUB_TOKEN}@github.com/jwc20/homebrew-tap.git" /tmp/tap
+          mkdir -p /tmp/tap/Formula && cp /tmp/pokerland-tracker.rb /tmp/tap/Formula/
+          cd /tmp/tap
+          git config user.name "github-actions" && git config user.email "actions@github.com"
+          git add Formula/pokerland-tracker.rb
+          git commit -m "pokerland-tracker ${version}" && git push

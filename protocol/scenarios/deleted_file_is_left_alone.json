@@ -1,0 +1,42 @@
+{
+  "name": "deleting a file does not disturb the others",
+  "steps": [
+    {
+      "write": {
+        "file": "a.txt",
+        "text": "﻿PokerStars Hand #260883420001:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "write": {
+        "file": "b.txt",
+        "text": "PokerStars Hand #260883420002:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "tick": 1
+    },
+    {
+      "delete": {
+        "file": "a.txt"
+      }
+    },
+    {
+      "write": {
+        "file": "b.txt",
+        "text": "PokerStars Hand #260883420003:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "tick": 1
+    }
+  ],
+  "expect": {
+    "chunks": {
+      "b.txt": 2
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "name": "every text file under the root is its own stream",
+  "steps": [
+    {
+      "write": {
+        "file": "Alice/x.txt",
+        "text": "﻿PokerStars Hand #260883420001:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "write": {
+        "file": "Alice/y.txt",
+        "text": "PokerStars Hand #260883420002:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "write": {
+        "file": "Bob/deeper/z.txt",
+        "text": "PokerStars Hand #260883420003:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "write": {
+        "file": "notes.log",
+        "text": "ignored\n"
+      }
+    },
+    {
+      "tick": 1
+    }
+  ],
+  "expect": {
+    "streams": {
+      "Alice/x.txt": 1,
+      "Alice/y.txt": 1,
+      "Bob/deeper/z.txt": 1,
+      "notes.log": 0
+    }
+  }
+}

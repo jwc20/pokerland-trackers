@@ -1,0 +1,27 @@
+{
+  "name": "empty files and files with no newline are not registered",
+  "steps": [
+    {
+      "write": {
+        "file": "empty.txt",
+        "text": ""
+      }
+    },
+    {
+      "write": {
+        "file": "partial.txt",
+        "text": "PokerStars Hand #1"
+      }
+    },
+    {
+      "tick": 2
+    }
+  ],
+  "expect": {
+    "streams": {
+      "empty.txt": 0,
+      "partial.txt": 0
+    },
+    "requests_at_most": 1
+  }
+}

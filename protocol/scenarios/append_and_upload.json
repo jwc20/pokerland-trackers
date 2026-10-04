@@ -1,0 +1,34 @@
+{
+  "name": "new hands are uploaded, later hands follow after the flush interval",
+  "steps": [
+    {
+      "write": {
+        "file": "Alice/HH20260521 Gertrud.txt",
+        "text": "﻿PokerStars Hand #260883420001:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\nPokerStars Hand #260883420002:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "tick": 1
+    },
+    {
+      "write": {
+        "file": "Alice/HH20260521 Gertrud.txt",
+        "text": "PokerStars Hand #260883420003:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "advance": 10
+    },
+    {
+      "tick": 1
+    }
+  ],
+  "expect": {
+    "chunks": {
+      "Alice/HH20260521 Gertrud.txt": 2
+    },
+    "streams": {
+      "Alice/HH20260521 Gertrud.txt": 1
+    }
+  }
+}

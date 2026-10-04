@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: Go tracker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mac/go.mod
+      - run: test -z "$(gofmt -l .)"
+        working-directory: mac
+      - run: go vet ./...
+        working-directory: mac
+      - run: go test ./...
+        working-directory: mac
+
+  dotnet:
+    name: Windows tracker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test Pokerland.Tracker.Tests -c Release
+        working-directory: windows
+      - run: dotnet build Pokerland.Tracker.App -c Release
+        working-directory: windows

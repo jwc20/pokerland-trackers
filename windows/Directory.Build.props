@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <!-- The release workflow overrides this with the git tag. -->
+    <Version Condition="'$(Version)' == ''">0.1.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Authors>Pokerland</Authors>
+    <Product>Pokerland Tracker</Product>
+    <!-- Lets the Windows-only app project compile on macOS/Linux CI runners too. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+</Project>

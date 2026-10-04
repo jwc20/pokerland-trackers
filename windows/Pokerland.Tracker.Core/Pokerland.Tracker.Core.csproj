@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Pokerland.Tracker</RootNamespace>
+    <Description>The tracker loop from protocol/PROTOCOL.md: no UI, no Windows dependencies.</Description>
+  </PropertyGroup>
+
+</Project>

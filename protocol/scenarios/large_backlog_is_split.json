@@ -1,0 +1,23 @@
+{
+  "name": "a big file goes up in several chunks cut at newlines, without waiting for the flush interval",
+  "config": {
+    "flush_bytes": 300,
+    "max_read_bytes": 300
+  },
+  "steps": [
+    {
+      "write": {
+        "file": "a.txt",
+        "text": "﻿PokerStars Hand #260883420001:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\nPokerStars Hand #260883420002:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\nPokerStars Hand #260883420003:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\nPokerStars Hand #260883420004:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\nPokerStars Hand #260883420005:  Hold'em No Limit (100/200) - 2026/05/21 18:31:27 UTC\nTable 'Gertrud VIII' 6-max (Play Money) Seat #2 is the button\nSeat 1: Alice (20000 in chips)\n*** SUMMARY ***\nTotal pot 400 | Rake 0\n\n\n\n"
+      }
+    },
+    {
+      "tick": 1
+    }
+  ],
+  "expect": {
+    "chunks": {
+      "a.txt": 5
+    }
+  }
+}
