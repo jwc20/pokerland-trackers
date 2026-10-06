@@ -56,21 +56,25 @@ test setup never touches the real one.
 
 ### Local and production builds
 
-The server a tracker talks to by default is set at build time from
-`POKERLAND_API_BASE_URL` in one of two files at the repo root, shared by both
-trackers. Neither holds secrets: the value ends up inside the binary.
+The server a tracker talks to by default is set at build time by its
+environment:
 
-| File | Used by |
-|---|---|
-| `.env.local` | `make -C mac build`, Debug builds of the Windows tracker |
-| `.env.production` | `make -C mac build ENV=production`, the Homebrew formula, the release workflow, Release builds of the Windows tracker (`build.ps1`) |
+| Environment | URL | Used by |
+|---|---|---|
+| `local` | `http://127.0.0.1:8000` | `make -C mac build`, Debug builds of the Windows tracker |
+| `production` | `https://api.pokerland.app` | `make -C mac build ENV=production`, the Homebrew formula, the release workflow, Release builds of the Windows tracker (`build.ps1`) |
 
-Override per build with `make -C mac build ENV=production` or
-`dotnet build -c Release -p:PokerlandEnv=local`. A URL saved by
+The production URL lives in code (`mac/internal/config/config.go`,
+`windows/Pokerland.Tracker.App/AppSettings.cs`), so a plain `go build` gets it
+too. Switch environment per build with `make -C mac build ENV=production` or
+`dotnet build -c Release -p:PokerlandEnv=local`.
+
+To point an environment at another server, set `POKERLAND_API_BASE_URL` in an
+untracked `.env.local` or `.env.production` at the repo root (shared by both
+trackers), or pass `POKERLAND_API_BASE_URL=...` to `make` or
+`-p:PokerlandApiBaseUrl=...` to `dotnet`. A URL saved by
 `pokerland-tracker login --api` (or in the Windows settings window) takes
-precedence over the built-in default. A plain `go build` falls back to the
-production URL in `mac/internal/config/config.go`, which a test keeps equal to
-`.env.production`.
+precedence over the built-in default.
 
 `make build` stamps the version from the nearest git tag (e.g.
 `0.1.1-3-gabc1234`). A build without a version reports `0.0.0-dev`, which

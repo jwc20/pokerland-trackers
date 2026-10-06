@@ -14,7 +14,7 @@ class PokerlandTracker < Formula
   depends_on "go" => :build
 
   def install
-    # The Makefile bakes in the production API URL from .env.production.
+    # ENV=production builds with the production API URL from mac/internal/config.
     system "make", "-C", "mac", "build", "ENV=production", "VERSION=#{version}", "OUT=#{bin}/pokerland-tracker"
   end
 
