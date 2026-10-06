@@ -45,11 +45,12 @@ type Registration struct {
 }
 
 // StatusError is a non-2xx reply. AckedOffset is set when the server included
-// one (a 409).
+// one (a 409), MinVersion with a 426.
 type StatusError struct {
 	Status      int
 	Detail      string
 	AckedOffset *int64
+	MinVersion  string
 }
 
 func (e *StatusError) Error() string {
@@ -159,10 +160,12 @@ func (c *Client) do(ctx context.Context, method, path string, body []byte, conte
 		var detail struct {
 			Detail      string `json:"detail"`
 			AckedOffset *int64 `json:"acked_offset"`
+			MinVersion  string `json:"min_version"`
 		}
 		if json.Unmarshal(data, &detail) == nil {
 			status.Detail = detail.Detail
 			status.AckedOffset = detail.AckedOffset
+			status.MinVersion = detail.MinVersion
 		}
 		return status
 	}

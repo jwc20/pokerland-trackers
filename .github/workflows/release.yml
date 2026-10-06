@@ -52,8 +52,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#v}"
           for arch in arm64 amd64; do
-            GOOS=darwin GOARCH=$arch CGO_ENABLED=0 go build -trimpath \
-              -ldflags "-s -w -X main.version=$version" -o "pokerland-tracker" ./cmd/pokerland-tracker
+            GOOS=darwin GOARCH=$arch make build ENV=production VERSION="$version"
             tar -czf "../pokerland-tracker_${version}_darwin_${arch}.tar.gz" pokerland-tracker
             rm pokerland-tracker
           done

@@ -20,6 +20,8 @@ jobs:
         working-directory: mac
       - run: go test ./...
         working-directory: mac
+      - run: make build && make build ENV=production
+        working-directory: mac
 
   dotnet:
     name: Windows tracker

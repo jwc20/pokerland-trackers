@@ -15,6 +15,29 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
+  <!--
+    The default server comes from the repo's .env.<PokerlandEnv> file, shared with
+    the macOS tracker: .env.local for Debug builds, .env.production for Release
+    builds (what build.ps1 ships). Override with -p:PokerlandEnv=local|production.
+    AppSettings reads it back from the assembly's metadata.
+  -->
+  <PropertyGroup>
+    <PokerlandEnv Condition="'$(PokerlandEnv)' == '' and '$(Configuration)' == 'Release'">production</PokerlandEnv>
+    <PokerlandEnv Condition="'$(PokerlandEnv)' == ''">local</PokerlandEnv>
+    <PokerlandEnvFile>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\.env.$(PokerlandEnv)'))</PokerlandEnvFile>
+    <PokerlandApiBaseUrl Condition="Exists('$(PokerlandEnvFile)')">$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(PokerlandEnvFile)')), '(?ms)\A.*?^POKERLAND_API_BASE_URL=([^\r\n]*).*\z', '$1').Trim())</PokerlandApiBaseUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="PokerlandApiBaseUrl" Value="$(PokerlandApiBaseUrl)" />
+  </ItemGroup>
+
+  <Target Name="CheckPokerlandEnv" BeforeTargets="BeforeBuild">
+    <Error Condition="!Exists('$(PokerlandEnvFile)')" Text="$(PokerlandEnvFile) not found: PokerlandEnv must be local or production." />
+    <Error Condition="!$(PokerlandApiBaseUrl.StartsWith('http'))" Text="$(PokerlandEnvFile) does not set POKERLAND_API_BASE_URL to an http(s) URL." />
+    <Message Importance="high" Text="Pokerland tracker ($(PokerlandEnv)): $(PokerlandApiBaseUrl)" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>

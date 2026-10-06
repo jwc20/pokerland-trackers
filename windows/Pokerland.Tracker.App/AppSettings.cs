@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -8,7 +9,11 @@ namespace Pokerland.Tracker.App;
 /// <summary>User settings. The token is encrypted with DPAPI, so only this Windows user can read it.</summary>
 internal sealed class AppSettings
 {
-    public const string DefaultApiBaseUrl = "https://api.pokerland.app";
+    /// <summary>The server used until the user saves another: POKERLAND_API_BASE_URL from the .env file the build used (see the .csproj).</summary>
+    public static readonly string DefaultApiBaseUrl =
+        typeof(AppSettings).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(a => a.Key == "PokerlandApiBaseUrl")?.Value
+        ?? throw new InvalidOperationException("Built without PokerlandApiBaseUrl metadata; see Pokerland.Tracker.App.csproj.");
 
     [JsonPropertyName("api_base_url")] public string ApiBaseUrl { get; set; } = DefaultApiBaseUrl;
     [JsonPropertyName("token_protected")] public string? TokenProtected { get; set; }

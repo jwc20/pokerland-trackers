@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +33,10 @@ import (
 )
 
 // Set by the build: -ldflags "-X main.version=1.2.3".
-var version = "0.0.0-dev"
+var version = devVersion
+
+// A build without -ldflags. Servers refuse it unless their minimum version is 0.0.0.
+const devVersion = "0.0.0-dev"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -113,11 +117,7 @@ func login(dataDir string, args []string) error {
 	defer cancel()
 	username, err := api.New(cfg.APIBaseURL, token, userAgent()).Me(ctx)
 	if err != nil {
-		var status *api.StatusError
-		if errors.As(err, &status) && status.Status == 401 {
-			return errors.New("the server rejected that token")
-		}
-		return fmt.Errorf("could not reach %s: %w", cfg.APIBaseURL, err)
+		return explain(err, cfg.APIBaseURL)
 	}
 	cfg.Token = token
 	if err := cfg.Save(dataDir); err != nil {
@@ -125,6 +125,26 @@ func login(dataDir string, args []string) error {
 	}
 	fmt.Printf("Connected as %s. Start the tracker with: brew services start pokerland-tracker\n", username)
 	return nil
+}
+
+// explain turns a failed request into what the user should do about it.
+func explain(err error, apiURL string) error {
+	var status *api.StatusError
+	if !errors.As(err, &status) {
+		return fmt.Errorf("could not reach %s: %w", apiURL, err)
+	}
+	switch status.Status {
+	case 401:
+		return errors.New("the server rejected that token")
+	case 426:
+		if version == devVersion {
+			return fmt.Errorf("the server needs tracker version %s or newer, and this dev build has no version; "+
+				"build it with -ldflags \"-X main.version=%s\"", status.MinVersion, status.MinVersion)
+		}
+		return fmt.Errorf("the server needs tracker version %s or newer, and this is %s; run `brew upgrade pokerland-tracker`",
+			status.MinVersion, version)
+	}
+	return fmt.Errorf("%s: %w", apiURL, err)
 }
 
 func logout(dataDir string) error {
@@ -160,45 +180,75 @@ func run(dataDir string, args []string, once bool) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
-	cfg, err := config.Load(dataDir)
-	if err != nil {
-		return err
-	}
-	if cfg.Token == "" {
-		return errors.New("no client token saved; run `pokerland-tracker login` first")
-	}
-	watched := roots(cfg, extra)
-	if len(watched) == 0 {
-		return errors.New("no PokerStars HandHistory folder found; pass one with --root or add it to config.json")
-	}
 	store, err := state.Load(filepath.Join(dataDir, "state.json"))
 	if err != nil {
 		return fmt.Errorf("state.json is unreadable (%w); delete it to start over", err)
 	}
 	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	f := follower.New(api.New(cfg.APIBaseURL, cfg.Token, userAgent()), store, follower.Options{
-		Roots:         watched,
-		Platform:      platform.Name(),
-		ClientVersion: version,
-		Log:           logger,
-		Notify:        platform.Notify,
-	})
-	logger.Info("tracker started", "version", version, "api", cfg.APIBaseURL, "roots", watched)
+	logger.Info("tracker started", "version", version)
+	if version == devVersion {
+		logger.Warn("dev build without a version: servers with a minimum tracker version will answer 426")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	statusPath := filepath.Join(dataDir, "status.json")
+	var f *follower.Follower
+	var built, waitingFor string // the settings f was built from; why the loop is idle
 	for {
-		f.Poll(ctx)
-		writeStatus(statusPath, f.Status())
-		if once || ctx.Err() != nil {
-			return nil
+		// Re-read the config every pass, so a service started before `login`, or a
+		// login with another token or server, takes effect without a restart.
+		cfg, err := config.Load(dataDir)
+		if err != nil {
+			return err
+		}
+		watched := roots(cfg, extra)
+		reason := ""
+		switch {
+		case cfg.Token == "":
+			reason = "not logged in: run `pokerland-tracker login`"
+		case len(watched) == 0:
+			reason = "no PokerStars HandHistory folder found: play a hand, or add the folder to extra_roots in config.json"
+		}
+		if reason != "" {
+			if once {
+				return errors.New(reason)
+			}
+			if reason != waitingFor {
+				logger.Warn("waiting", "reason", reason)
+				waitingFor = reason
+			}
+			f, built = nil, ""
+			writeStatus(statusPath, follower.Status{LastPollAt: time.Now(), PausedReason: reason})
+		} else {
+			waitingFor = ""
+			if settings := cfg.APIBaseURL + "\n" + cfg.Token + "\n" + strings.Join(watched, "\n"); settings != built {
+				f = follower.New(api.New(cfg.APIBaseURL, cfg.Token, userAgent()), store, follower.Options{
+					Roots:         watched,
+					Platform:      platform.Name(),
+					ClientVersion: version,
+					Log:           logger,
+					Notify:        platform.Notify,
+				})
+				built = settings
+				logger.Info("watching", "api", cfg.APIBaseURL, "roots", watched)
+			}
+			f.Poll(ctx)
+			writeStatus(statusPath, f.Status())
+			if once {
+				return nil
+			}
+		}
+
+		interval := 5 * time.Second
+		if f != nil {
+			interval = f.PollInterval()
 		}
 		select {
 		case <-ctx.Done():
 			logger.Info("tracker stopping")
 			return nil
-		case <-time.After(f.PollInterval()):
+		case <-time.After(interval):
 		}
 	}
 }
@@ -206,7 +256,7 @@ func run(dataDir string, args []string, once bool) error {
 // writeStatus is best effort: `status` reads it while the daemon runs.
 func writeStatus(path string, s follower.Status) {
 	data, err := json.MarshalIndent(s, "", "  ")
-	if err == nil {
+	if err == nil && os.MkdirAll(filepath.Dir(path), 0o700) == nil { // no config saved yet: no folder
 		_ = os.WriteFile(path, data, 0o600)
 	}
 }
@@ -228,8 +278,11 @@ func status(dataDir string) error {
 	if data, err := os.ReadFile(filepath.Join(dataDir, "status.json")); err == nil && json.Unmarshal(data, &s) == nil {
 		fmt.Printf("Last poll:   %s\n", ago(s.LastPollAt))
 		fmt.Printf("Last upload: %s (%d bytes this run)\n", ago(s.LastUploadAt), s.BytesUploaded)
-		if s.PausedReason != "" {
+		switch {
+		case s.PausedReason != "" && !s.PausedUntil.IsZero():
 			fmt.Printf("Paused:      %s until %s\n", s.PausedReason, s.PausedUntil.Local().Format(time.Kitchen))
+		case s.PausedReason != "":
+			fmt.Printf("Waiting:     %s\n", s.PausedReason)
 		}
 		if s.LastError != "" {
 			fmt.Printf("Last error:  %s\n", s.LastError)
@@ -286,6 +339,9 @@ func doctor(dataDir string) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		username, err := api.New(cfg.APIBaseURL, cfg.Token, userAgent()).Me(ctx)
+		if err != nil {
+			err = explain(err, cfg.APIBaseURL)
+		}
 		check(err == nil, fmt.Sprintf("server %s accepts the token (user %s)", cfg.APIBaseURL, username), fmt.Sprint(err))
 	}
 	_, err = os.Stat(filepath.Join(dataDir, "status.json"))

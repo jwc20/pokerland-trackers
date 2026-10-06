@@ -8,7 +8,11 @@ import (
 	"path/filepath"
 )
 
-const DefaultAPIBaseURL = "https://api.pokerland.app"
+// DefaultAPIBaseURL is the server used until `login --api` saves another one.
+// The Makefile sets it from POKERLAND_API_BASE_URL in the repo's .env.local or
+// .env.production; a plain `go build` gets the production URL below, which
+// config_test.go keeps equal to .env.production.
+var DefaultAPIBaseURL = "https://api.pokerland.app"
 
 type Config struct {
 	APIBaseURL string `json:"api_base_url"`

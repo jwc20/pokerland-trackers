@@ -40,18 +40,41 @@ pause, check for updates or quit.
 
 ```bash
 # macOS tracker
-cd mac && go test ./... && go build ./cmd/pokerland-tracker
+make -C mac test
+make -C mac build                    # -> mac/pokerland-tracker, talks to the local API
 
 # Windows tracker (the Core library and its tests build and run on macOS/Linux too)
 cd windows && dotnet test Pokerland.Tracker.Tests
 
-# Try either against a local pokerland-api
-POKERLAND_TRACKER_HOME=/tmp/pl ./pokerland-tracker login --api http://localhost:8000
-POKERLAND_TRACKER_HOME=/tmp/pl ./pokerland-tracker once --root /path/to/HandHistory
+# Try it against a local pokerland-api
+POKERLAND_TRACKER_HOME=/tmp/pl mac/pokerland-tracker login
+POKERLAND_TRACKER_HOME=/tmp/pl mac/pokerland-tracker once --root /path/to/HandHistory
 ```
 
 `POKERLAND_TRACKER_HOME` relocates the config, state and status files, so a
 test setup never touches the real one.
+
+### Local and production builds
+
+The server a tracker talks to by default is set at build time from
+`POKERLAND_API_BASE_URL` in one of two files at the repo root, shared by both
+trackers. Neither holds secrets: the value ends up inside the binary.
+
+| File | Used by |
+|---|---|
+| `.env.local` | `make -C mac build`, Debug builds of the Windows tracker |
+| `.env.production` | `make -C mac build ENV=production`, the Homebrew formula, the release workflow, Release builds of the Windows tracker (`build.ps1`) |
+
+Override per build with `make -C mac build ENV=production` or
+`dotnet build -c Release -p:PokerlandEnv=local`. A URL saved by
+`pokerland-tracker login --api` (or in the Windows settings window) takes
+precedence over the built-in default. A plain `go build` falls back to the
+production URL in `mac/internal/config/config.go`, which a test keeps equal to
+`.env.production`.
+
+`make build` stamps the version from the nearest git tag (e.g.
+`0.1.1-3-gabc1234`). A build without a version reports `0.0.0-dev`, which
+servers refuse with 426 unless their `TRACKER_MIN_CLIENT_VERSION` is `0.0.0`.
 
 ### Layout
 
